@@ -17,46 +17,52 @@ struct ContentView: View {
     // UI
     @State private var isLoading = false
     @State private var showAccessAlert = false
-    @State private var showAddManual = false
+    @State private var showAddSheet = false
 
     var body: some View {
         NavigationStack {
             List {
-                if mergedSorted.isEmpty {
+                if allItems.isEmpty {
                     ContentUnavailableView(
                         "No birthdays yet",
                         systemImage: "gift",
-                        description: Text("Add manually or allow Contacts access to see birthdays.")
+                        description: Text("Add from Contacts or manually to get started.")
                     )
                 } else {
-                    ForEach(mergedSorted) { item in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.fullName)
-                                    .font(.headline)
-                                Text("\(formattedMonthDay(item.month, item.day)) · \(countdownString(item.month, item.day))")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if item.source == .manual {
-                                Text("Manual")
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6).padding(.vertical, 2)
-                                    .background(.quaternary)
-                                    .clipShape(Capsule())
-                            } else {
-                                Text("🎂")
-                            }
+                    // TODAY — big banner + rows
+                    if !groups.today.isEmpty {
+                        // 1) Banner (no header)
+                        Section {
+                            todayBanner(count: groups.today.count)
+                                .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 16))
+                                .listRowBackground(Color.clear)
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            if item.source == .manual, let manualId = item.manualId {
-                                Button(role: .destructive) {
-                                    deleteManual(manualId)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+
+                        // 2) Today's names with a header
+                        Section {
+                            ForEach(groups.today) { row in
+                                rowView(row)
                             }
+                        } header: {
+                            sectionHeader(title: "Today")
+                        }
+                    }
+
+                    // THIS WEEK (1–7 days)
+                    if !groups.week.isEmpty {
+                        Section {
+                            ForEach(groups.week) { row in rowView(row) }
+                        } header: {
+                            sectionHeader(title: "This week")
+                        }
+                    }
+
+                    // COMING UP (8+ days)
+                    if !groups.upcoming.isEmpty {
+                        Section {
+                            ForEach(groups.upcoming) { row in rowView(row) }
+                        } header: {
+                            sectionHeader(title: "Coming up")
                         }
                     }
                 }
@@ -64,18 +70,25 @@ struct ContentView: View {
             .navigationTitle("Birthdays")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { showAddManual = true } label: { Image(systemName: "plus") }
-                        .accessibilityLabel("Add manually")
+                    Button { showAddSheet = true } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("Add birthday")
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { Task { await reloadAll() } } label: { Image(systemName: "arrow.clockwise") }
-                        .accessibilityLabel("Refresh")
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink {
+                        // if you don't keep manual, pass []
+                        BirthdaysCalendarScreen(contacts: contacts, manual: manual)
+                    } label: { Image(systemName: "calendar") }
+
+                    Button { Task { await reloadAll() } } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
                 }
             }
+            .refreshable { await reloadAll() }
         }
-        .sheet(isPresented: $showAddManual) {
-            AddManualBirthdayView {
-                loadManual()
+        .sheet(isPresented: $showAddSheet) {
+            AddBirthdaySheet {
+                Task { await reloadAll() }
             }
         }
         .task { await reloadAll() }
@@ -91,7 +104,68 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Merging
+    // MARK: - Row view
+
+    @ViewBuilder
+    private func rowView(_ item: RowItem) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.fullName).font(.headline)
+                Text("\(formattedMonthDay(item.month, item.day)) · \(countdownString(item.month, item.day))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if item.source == .manual {
+                Text("Manual")
+                    .font(.caption2)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Color.gray.opacity(0.15))
+                    .clipShape(Capsule())
+            } else {
+                Text("🎂")
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if item.source == .manual, let manualId = item.manualId {
+                Button(role: .destructive) {
+                    deleteManual(manualId)
+                } label: { Label("Delete", systemImage: "trash") }
+            }
+        }
+    }
+
+    // MARK: - Section headers & banner
+
+    private func sectionHeader(title: String) -> some View {
+        Text(title.uppercased())
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 4)
+    }
+
+    private func todayBanner(count: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("TODAY").font(.caption).bold().opacity(0.9)
+            Text(count == 1 ? "You have 1 birthday 🎉" : "You have \(count) birthdays 🎉")
+                .font(.title3).bold()
+            Text("Don’t forget to send a message!")
+                .font(.footnote).opacity(0.95)
+        }
+        .padding(16)
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [Color.pink.opacity(0.9), Color.orange.opacity(0.9)]),
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        )
+        .foregroundStyle(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 6)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Merging & grouping
 
     enum Source { case contact, manual }
 
@@ -105,29 +179,48 @@ struct ContentView: View {
         var manualId: UUID? // for deletions
     }
 
-    var merged: [RowItem] {
-        let contactRows = contacts.map { c in
+    private var contactRows: [RowItem] {
+        contacts.map { c in
             RowItem(
-                id: c.id, fullName: "\(c.givenName) \(c.familyName)".trimmingCharacters(in: .whitespaces),
+                id: c.id,
+                fullName: "\(c.givenName) \(c.familyName)".trimmingCharacters(in: .whitespaces),
                 month: c.month, day: c.day, year: c.year,
                 source: .contact, manualId: nil
             )
         }
-        let manualRows = manual.map { m in
+    }
+
+    private var manualRows: [RowItem] {
+        manual.map { m in
             RowItem(
-                id: m.id, fullName: "\(m.firstName) \(m.lastName)".trimmingCharacters(in: .whitespaces),
+                id: m.id,
+                fullName: "\(m.firstName) \(m.lastName)".trimmingCharacters(in: .whitespaces),
                 month: m.month, day: m.day, year: m.year,
                 source: .manual, manualId: m.id
             )
         }
-        return contactRows + manualRows
     }
 
-    var mergedSorted: [RowItem] {
-        merged.sorted { nextDate($0.month, $0.day) < nextDate($1.month, $1.day) }
+    private var allItems: [RowItem] { contactRows + manualRows }
+
+    private var groups: (today: [RowItem], week: [RowItem], upcoming: [RowItem]) {
+        var today: [RowItem] = []
+        var week: [RowItem] = []
+        var upcoming: [RowItem] = []
+        for item in allItems {
+            let d = daysUntilNext(item.month, item.day)
+            if d == 0 { today.append(item) }
+            else if d <= 7 { week.append(item) }
+            else { upcoming.append(item) }
+        }
+        // sort each by “soonest”
+        let sorter: (RowItem, RowItem) -> Bool = { a, b in
+            daysUntilNext(a.month, a.day) < daysUntilNext(b.month, b.day)
+        }
+        return (today.sorted(by: sorter), week.sorted(by: sorter), upcoming.sorted(by: sorter))
     }
 
-    // MARK: - Loading
+    // MARK: - Loading (same as before)
 
     func reloadAll() async {
         guard !isLoading else { return }
@@ -150,16 +243,14 @@ struct ContentView: View {
         }
     }
 
-    func loadManual() {
-        manual = ManualStore.load()
-    }
+    func loadManual() { manual = ManualStore.load() }
 
     func deleteManual(_ id: UUID) {
         ManualStore.remove(id: id)
         loadManual()
     }
 
-    // MARK: - Date helpers (same logic you had)
+    // MARK: - Date helpers
 
     func nextDate(_ month: Int, _ day: Int) -> Date {
         let cal = Calendar.current

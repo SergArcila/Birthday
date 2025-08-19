@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		EE8242E62E55159C00126321 /* FSCalendar in Frameworks */ = {isa = PBXBuildFile; productRef = EE8242E52E55159C00126321 /* FSCalendar */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		EE8242AE2E54DD0400126321 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EE8242E62E55159C00126321 /* FSCalendar in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = Birthday;
 			packageProductDependencies = (
+				EE8242E52E55159C00126321 /* FSCalendar */,
 			);
 			productName = Birthday;
 			productReference = EE82429E2E54DD0300126321 /* Birthday.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = EE8242952E54DD0300126321;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EE8242E42E55159C00126321 /* XCRemoteSwiftPackageReference "FSCalendar" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EE82429F2E54DD0300126321 /* Products */;
 			projectDirPath = "";
@@ -560,6 +569,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		EE8242E42E55159C00126321 /* XCRemoteSwiftPackageReference "FSCalendar" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/WenchaoD/FSCalendar";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EE8242E52E55159C00126321 /* FSCalendar */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EE8242E42E55159C00126321 /* XCRemoteSwiftPackageReference "FSCalendar" */;
+			productName = FSCalendar;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = EE8242962E54DD0300126321 /* Project object */;
 }
