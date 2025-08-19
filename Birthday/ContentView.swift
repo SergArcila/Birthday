@@ -18,6 +18,9 @@ struct ContentView: View {
     @State private var isLoading = false
     @State private var showAccessAlert = false
     @State private var showAddSheet = false
+    @State private var editingManual: ManualBirthday?
+    private struct ContactID: Identifiable { let id: String }
+    @State private var editingContact: ContactID?
 
     var body: some View {
         NavigationStack {
@@ -91,6 +94,17 @@ struct ContentView: View {
                 Task { await reloadAll() }
             }
         }
+        .sheet(item: $editingManual) { m in
+            EditManualBirthdayView(item: m) {
+                loadManual()
+            }
+        }
+
+        .sheet(item: $editingContact) { id in
+            ContactBirthdayEditorView(contactId: id.id) {
+                Task { await reloadAll() }
+            }
+        }
         .task { await reloadAll() }
         .alert("Contacts Access Needed", isPresented: $showAccessAlert) {
             Button("Open Settings") {
@@ -126,11 +140,28 @@ struct ContentView: View {
                 Text("🎂")
             }
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if item.source == .manual, let manualId = item.manualId {
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if item.source == .manual, let manualId = item.manualId,
+               let m = manual.first(where: { $0.id == manualId }) {
+
+                Button {
+                    editingManual = m
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+
                 Button(role: .destructive) {
                     deleteManual(manualId)
-                } label: { Label("Delete", systemImage: "trash") }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+
+            } else if item.source == .contact, let cid = item.contactId {
+                Button {
+                    editingContact = ContactID(id: cid)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
             }
         }
     }
@@ -176,7 +207,8 @@ struct ContentView: View {
         var day: Int
         var year: Int?
         var source: Source
-        var manualId: UUID? // for deletions
+        var manualId: UUID?      // for manual edit/delete
+        var contactId: String?   // for Contacts edit
     }
 
     private var contactRows: [RowItem] {
@@ -185,7 +217,9 @@ struct ContentView: View {
                 id: c.id,
                 fullName: "\(c.givenName) \(c.familyName)".trimmingCharacters(in: .whitespaces),
                 month: c.month, day: c.day, year: c.year,
-                source: .contact, manualId: nil
+                source: .contact,
+                manualId: nil,
+                contactId: c.contactId
             )
         }
     }
@@ -196,7 +230,9 @@ struct ContentView: View {
                 id: m.id,
                 fullName: "\(m.firstName) \(m.lastName)".trimmingCharacters(in: .whitespaces),
                 month: m.month, day: m.day, year: m.year,
-                source: .manual, manualId: m.id
+                source: .manual,
+                manualId: m.id,
+                contactId: nil
             )
         }
     }

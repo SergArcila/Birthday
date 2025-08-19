@@ -56,4 +56,12 @@ enum ManualStore {
             save(items)
         }
     }
+    
+    static func update(_ item: ManualBirthday) {
+        var items = load()
+        if let i = items.firstIndex(where: { $0.id == item.id }) {
+            items[i] = item
+            save(items)
+        }
+    }
 }

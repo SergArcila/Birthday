@@ -9,7 +9,8 @@ import Foundation
 import Contacts
 
 struct ContactBirthday: Identifiable, Hashable {
-    let id = UUID()
+    let id = UUID()              // row identity for SwiftUI
+    let contactId: String        // CNContact.identifier (for editing)
     let givenName: String
     let familyName: String
     let month: Int
@@ -41,6 +42,7 @@ enum ContactsProvider {
         try store.enumerateContacts(with: request) { c, _ in
             if let b = c.birthday, let m = b.month, let d = b.day {
                 items.append(ContactBirthday(
+                    contactId: c.identifier,
                     givenName: c.givenName,
                     familyName: c.familyName,
                     month: m, day: d, year: b.year
