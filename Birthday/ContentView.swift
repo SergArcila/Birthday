@@ -219,7 +219,7 @@ struct ContentView: View {
                 month: c.month, day: c.day, year: c.year,
                 source: .contact,
                 manualId: nil,
-                contactId: c.contactId
+                contactId: c.contactId   // 👈 add this
             )
         }
     }

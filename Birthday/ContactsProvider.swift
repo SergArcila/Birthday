@@ -9,8 +9,8 @@ import Foundation
 import Contacts
 
 struct ContactBirthday: Identifiable, Hashable {
-    let id = UUID()              // row identity for SwiftUI
-    let contactId: String        // CNContact.identifier (for editing)
+    let id = UUID()          // SwiftUI row id
+    let contactId: String    // CNContact.identifier (for editing/deleting)
     let givenName: String
     let familyName: String
     let month: Int
@@ -32,6 +32,7 @@ enum ContactsProvider {
 
     static func fetchBirthdays() async throws -> [ContactBirthday] {
         let keys: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
             CNContactGivenNameKey as CNKeyDescriptor,
             CNContactFamilyNameKey as CNKeyDescriptor,
             CNContactBirthdayKey as CNKeyDescriptor
@@ -104,24 +105,44 @@ extension ContactsProvider {
     }
 
     static func updateContactBirthday(identifier: String, month: Int, day: Int, year: Int?) throws {
-        let keys: [CNKeyDescriptor] = [
-            CNContactBirthdayKey as CNKeyDescriptor,
-            CNContactGivenNameKey as CNKeyDescriptor,
-            CNContactFamilyNameKey as CNKeyDescriptor
-        ]
+        let keys: [CNKeyDescriptor] = [CNContactBirthdayKey as CNKeyDescriptor]
         let contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: keys)
         let mutable = contact.mutableCopy() as! CNMutableContact
         mutable.birthday = DateComponents(year: year, month: month, day: day)
-
-        let req = CNSaveRequest()
-        req.update(mutable)
+        let req = CNSaveRequest(); req.update(mutable)
         try store.execute(req)
     }
 
-    static func createContact(firstName: String, lastName: String, month: Int, day: Int, year: Int?) throws {
+    static func removeBirthday(identifier: String) throws {
+        let keys: [CNKeyDescriptor] = [CNContactBirthdayKey as CNKeyDescriptor]
+        let contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: keys)
+        let mutable = contact.mutableCopy() as! CNMutableContact
+        mutable.birthday = nil
+        let req = CNSaveRequest(); req.update(mutable)
+        try store.execute(req)
+    }
+
+    static func deleteContact(identifier: String) throws {
+        let keys: [CNKeyDescriptor] = [CNContactIdentifierKey as CNKeyDescriptor]
+        let contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: keys)
+        let mutable = contact.mutableCopy() as! CNMutableContact
+        let req = CNSaveRequest(); req.delete(mutable)
+        try store.execute(req)
+    }
+
+    static func createContact(firstName: String,
+                              lastName: String,
+                              phone: String?,
+                              month: Int, day: Int, year: Int?) throws {
         let new = CNMutableContact()
         new.givenName = firstName.trimmingCharacters(in: .whitespaces)
         new.familyName = lastName.trimmingCharacters(in: .whitespaces)
+        if let phone, !phone.trimmingCharacters(in: .whitespaces).isEmpty {
+            new.phoneNumbers = [
+                CNLabeledValue(label: CNLabelPhoneNumberMobile,
+                               value: CNPhoneNumber(stringValue: phone))
+            ]
+        }
         new.birthday = DateComponents(year: year, month: month, day: day)
 
         let req = CNSaveRequest()

@@ -19,6 +19,9 @@ struct ContactBirthdayEditorView: View {
     @State private var yearText: String = ""
     @State private var errorText: String?
 
+    @State private var confirmRemove = false
+    @State private var confirmDelete = false
+
     var body: some View {
         NavigationStack {
             Form {
@@ -33,6 +36,10 @@ struct ContactBirthdayEditorView: View {
                 if let err = errorText {
                     Section { Text(err).foregroundStyle(.red).font(.footnote) }
                 }
+                Section("Danger Zone") {
+                    Button("Remove Birthday", role: .destructive) { confirmRemove = true }
+                    Button("Delete Contact", role: .destructive) { confirmDelete = true }
+                }
             }
             .navigationTitle("Edit Birthday")
             .toolbar {
@@ -42,6 +49,14 @@ struct ContactBirthdayEditorView: View {
                 }
             }
             .task { load() }
+            .confirmationDialog("Remove birthday from this contact?", isPresented: $confirmRemove, titleVisibility: .visible) {
+                Button("Remove Birthday", role: .destructive) { removeBirthday() }
+                Button("Cancel", role: .cancel) { }
+            }
+            .confirmationDialog("Delete this contact from your phone?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button("Delete Contact", role: .destructive) { deleteContact() }
+                Button("Cancel", role: .cancel) { }
+            }
         }
     }
 
@@ -60,13 +75,31 @@ struct ContactBirthdayEditorView: View {
     private func save() {
         do {
             try ContactsProvider.updateContactBirthday(identifier: contactId,
-                                                       month: month,
-                                                       day: day,
-                                                       year: Int(yearText))
+                                                       month: month, day: day, year: Int(yearText))
             onSaved?()
             dismiss()
         } catch {
             errorText = "Saving failed. This contact may be read-only."
+        }
+    }
+
+    private func removeBirthday() {
+        do {
+            try ContactsProvider.removeBirthday(identifier: contactId)
+            onSaved?()            // list reloads, contact disappears from app
+            dismiss()
+        } catch {
+            errorText = "Could not remove birthday (read-only account?)."
+        }
+    }
+
+    private func deleteContact() {
+        do {
+            try ContactsProvider.deleteContact(identifier: contactId)
+            onSaved?()            // list reloads
+            dismiss()
+        } catch {
+            errorText = "Deletion failed. Some accounts don’t allow deleting."
         }
     }
 }

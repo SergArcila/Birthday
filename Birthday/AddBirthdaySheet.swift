@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AddBirthdaySheet: View {
-    enum Mode: String, CaseIterable { case contacts = "Contacts", manual = "Manual" }
+    enum Mode: String, CaseIterable { case contacts = "Contacts", newContact = "New Contact" }
 
     @Environment(\.dismiss) private var dismiss
     var onSaved: (() -> Void)?
@@ -30,7 +30,7 @@ struct AddBirthdaySheet: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
 
-                if mode == .contacts { contactsPane } else { manualPane }
+                if mode == .contacts { contactsPane } else { newContactPane }
             }
             .navigationTitle("Add Birthday")
             .toolbar {
@@ -84,8 +84,8 @@ struct AddBirthdaySheet: View {
     }
 
     // MARK: - Manual mode
-    var manualPane: some View {
-        AddManualContactView {
+    var newContactPane: some View {
+        NewContactView {
             onSaved?()
             dismiss()
         }
