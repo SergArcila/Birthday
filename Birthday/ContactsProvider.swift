@@ -151,3 +151,25 @@ extension ContactsProvider {
         try store.execute(req)
     }
 }
+
+import Contacts
+
+extension ContactsProvider {
+    static func fetchContactFull(by identifier: String) throws -> CNContact {
+        let keys: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactGivenNameKey as CNKeyDescriptor,
+            CNContactFamilyNameKey as CNKeyDescriptor,
+            CNContactBirthdayKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPostalAddressesKey as CNKeyDescriptor,
+            CNContactUrlAddressesKey as CNKeyDescriptor,
+            CNContactSocialProfilesKey as CNKeyDescriptor,
+            //CNContactNoteKey as CNKeyDescriptor,
+            CNContactImageDataAvailableKey as CNKeyDescriptor,
+            CNContactThumbnailImageDataKey as CNKeyDescriptor
+        ]
+        return try store.unifiedContact(withIdentifier: identifier, keysToFetch: keys)
+    }
+}
