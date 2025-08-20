@@ -10,6 +10,45 @@ import Contacts
 import UIKit
 
 struct ContentView: View {
+    private var currentYear: Int {
+        Calendar.current.component(.year, from: Date())
+    }
+
+    private func nextOccurrenceYear(_ month: Int, _ day: Int) -> Int {
+        let date = nextDate(month, day) // you already have nextDate(_:_:)
+        return Calendar.current.component(.year, from: date)
+    }
+
+    /// Split the "coming up" group into this year vs. next year.
+    private var upcomingSplit: (thisYear: [RowItem], nextYear: [RowItem]) {
+        var thisYear: [RowItem] = []
+        var nextYear: [RowItem] = []
+        for item in groups.upcoming {
+            if nextOccurrenceYear(item.month, item.day) == currentYear {
+                thisYear.append(item)
+            } else {
+                nextYear.append(item)
+            }
+        }
+        // keep your “soonest first” ordering
+        let sorter: (RowItem, RowItem) -> Bool = { a, b in
+            daysUntilNext(a.month, a.day) < daysUntilNext(b.month, b.day)
+        }
+        return (thisYear.sorted(by: sorter), nextYear.sorted(by: sorter))
+    }
+
+    private func yearHeader(_ year: Int) -> some View {
+        Text(verbatim: String(year))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 4)
+    }
+
+    private var noTodayRow: some View {
+        Text("No birthdays today :(")
+            .font(.callout)
+            .foregroundStyle(.primary)
+    }
     // Data sources
     @State private var contacts: [ContactBirthday] = []
     @State private var manual: [ManualBirthday] = []
@@ -31,27 +70,34 @@ struct ContentView: View {
                         systemImage: "gift",
                         description: Text("Add from Contacts or manually to get started.")
                     )
-                } else {
+                }
+                else {
                     // TODAY — big banner + rows
-                    if !groups.today.isEmpty {
-                        // 1) Banner (no header)
-                        Section {
-                            todayBanner(count: groups.today.count)
-                                .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 16))
-                                .listRowBackground(Color.clear)
+                    // TODAY — one section, consistent spacing with others
+                    Section{
+                        if !groups.today.isEmpty {
+                            // 1) Banner (no header)
+                            Section {
+                                todayBanner(count: groups.today.count)
+                                    .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 16))
+                                    .listRowBackground(Color.clear)
+                            }
                         }
-
-                        // 2) Today's names with a header
-                        Section {
+                    }
+                    Section {
+                        if groups.today.isEmpty {
+                            noTodayRow            // now inside the section ✅
+                            // (no custom insets here; let List handle it)
+                        } else {
                             ForEach(groups.today) { row in
                                 rowView(row)
                             }
-                        } header: {
-                            sectionHeader(title: "Today")
                         }
+                    } header: {
+                        sectionHeader(title: "Today")
                     }
-
-                    // THIS WEEK (1–7 days)
+                    
+                    // THIS WEEK (1–7 days) — separate section
                     if !groups.week.isEmpty {
                         Section {
                             ForEach(groups.week) { row in rowView(row) }
@@ -59,13 +105,21 @@ struct ContentView: View {
                             sectionHeader(title: "This week")
                         }
                     }
-
-                    // COMING UP (8+ days)
-                    if !groups.upcoming.isEmpty {
+                    
+                    // COMING UP (8+ days), then next year
+                    let split = upcomingSplit
+                    if !split.thisYear.isEmpty {
                         Section {
-                            ForEach(groups.upcoming) { row in rowView(row) }
+                            ForEach(split.thisYear) { row in rowView(row) }
                         } header: {
                             sectionHeader(title: "Coming up")
+                        }
+                    }
+                    if !split.nextYear.isEmpty {
+                        Section {
+                            ForEach(split.nextYear) { row in rowView(row) }
+                        } header: {
+                            yearHeader(currentYear + 1)
                         }
                     }
                 }
